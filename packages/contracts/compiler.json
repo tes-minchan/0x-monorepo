@@ -37,6 +37,8 @@
         "TestLibMem",
         "TestLibs",
         "TestSignatureValidator",
+        "TestValidator",
+        "TestWallet",
         "TokenRegistry",
         "Whitelist",
         "WETH9",
