@@ -27,7 +27,7 @@ contract MAssetProxyDispatcher is
 
     // Logs registration of new asset proxy
     event AssetProxySet(
-        uint8 id,
+        bytes4 id,
         address newAssetProxy,
         address oldAssetProxy
     );
