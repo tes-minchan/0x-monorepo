@@ -31,7 +31,7 @@ contract MixinAssetProxyDispatcher is
     MAssetProxyDispatcher
 {
     // Mapping from Asset Proxy Id's to their respective Asset Proxy
-    mapping (uint8 => IAssetProxy) public assetProxies;
+    mapping (uint8 => address) public assetProxies;
 
     /// @dev Registers an asset proxy to an asset proxy id.
     ///      An id can only be assigned to a single proxy at a given time.
@@ -47,17 +47,15 @@ contract MixinAssetProxyDispatcher is
         onlyOwner
     {
         // Ensure the existing asset proxy is not unintentionally overwritten
-        address currentAssetProxy = address(assetProxies[assetProxyId]);
+        address currentAssetProxy = assetProxies[assetProxyId];
         require(
             oldAssetProxy == currentAssetProxy,
             ASSET_PROXY_MISMATCH
         );
 
-        IAssetProxy assetProxy = IAssetProxy(newAssetProxy);
-
         // Ensure that the id of newAssetProxy matches the passed in assetProxyId, unless it is being reset to 0.
         if (newAssetProxy != address(0)) {
-            uint8 newAssetProxyId = assetProxy.getProxyId();
+            uint8 newAssetProxyId = IAssetProxy(newAssetProxy).getProxyId();
             require(
                 newAssetProxyId == assetProxyId,
                 ASSET_PROXY_ID_MISMATCH
@@ -65,8 +63,12 @@ contract MixinAssetProxyDispatcher is
         }
 
         // Add asset proxy and log registration.
-        assetProxies[assetProxyId] = assetProxy;
-        emit AssetProxySet(assetProxyId, newAssetProxy, oldAssetProxy);
+        assetProxies[assetProxyId] = newAssetProxy;
+        emit AssetProxySet(
+            assetProxyId,
+            newAssetProxy,
+            oldAssetProxy
+        );
     }
 
     /// @dev Gets an asset proxy.
@@ -77,8 +79,7 @@ contract MixinAssetProxyDispatcher is
         view
         returns (address)
     {
-        address assetProxy = address(assetProxies[assetProxyId]);
-        return assetProxy;
+        return assetProxies[assetProxyId];
     }
 
     /// @dev Forwards arguments to assetProxy and calls `transferFrom`. Either succeeds or throws.
@@ -99,9 +100,19 @@ contract MixinAssetProxyDispatcher is
         // Do nothing if no amount should be transferred.
         if (amount > 0) {
             // Lookup assetProxy
-            IAssetProxy assetProxy = assetProxies[assetProxyId];
+            address assetProxy = assetProxies[assetProxyId];
+            // Ensure that assetProxy exists
+            require(
+                assetProxy != address(0),
+                ASSET_PROXY_DOES_NOT_EXIST
+            );
             // transferFrom will either succeed or throw.
-            assetProxy.transferFrom(assetData, from, to, amount);
+            IAssetProxy(assetProxy).transferFrom(
+                assetData,
+                from,
+                to,
+                amount
+            );
         }
     }
 }
