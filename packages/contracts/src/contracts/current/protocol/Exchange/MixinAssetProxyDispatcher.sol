@@ -19,6 +19,7 @@
 pragma solidity ^0.4.24;
 
 import "../../utils/Ownable/Ownable.sol";
+import "../../utils/LibBytes/LibBytes.sol";
 import "./libs/LibExchangeErrors.sol";
 import "./mixins/MAssetProxyDispatcher.sol";
 import "../AssetProxy/interfaces/IAssetProxy.sol";
@@ -28,6 +29,8 @@ contract MixinAssetProxyDispatcher is
     LibExchangeErrors,
     MAssetProxyDispatcher
 {
+    using LibBytes for bytes;
+    
     // Mapping from Asset Proxy Id's to their respective Asset Proxy
     mapping (uint8 => IAssetProxy) public assetProxies;
 
@@ -80,14 +83,12 @@ contract MixinAssetProxyDispatcher is
     }
 
     /// @dev Forwards arguments to assetProxy and calls `transferFrom`. Either succeeds or throws.
-    /// @param assetData Byte array encoded for the respective asset proxy.
-    /// @param assetProxyId Id of assetProxy to dispach to.
+    /// @param assetData Byte array encoded for the asset.
     /// @param from Address to transfer token from.
     /// @param to Address to transfer token to.
     /// @param amount Amount of token to transfer.
     function dispatchTransferFrom(
         bytes memory assetData,
-        uint8 assetProxyId,
         address from,
         address to,
         uint256 amount
@@ -97,9 +98,21 @@ contract MixinAssetProxyDispatcher is
         // Do nothing if no amount should be transferred.
         if (amount > 0) {
             // Lookup assetProxy
+            uint8 assetProxyId = uint8(assetData[assetData.length - 1]);
+            
+            bytes memory assetDataP = new bytes(assetData.length - 1);
+            LibBytes.memCopy(
+                assetDataP.contentAddress(),
+                assetData.contentAddress(),
+                assetDataP.length
+            );
+            
             IAssetProxy assetProxy = assetProxies[assetProxyId];
+            // When not found, assetProxy will be zero and will
+            // throw when attempting a call. TODO: proper revert.
+            
             // transferFrom will either succeed or throw.
-            assetProxy.transferFrom(assetData, from, to, amount);
+            assetProxy.transferFrom(assetDataP, from, to, amount);
         }
     }
 }
